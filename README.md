@@ -63,7 +63,7 @@ Contributions are welcome!
 
 ## License
 
-Obsidian license (0BSD).
+MIT License
 
 ---
 
