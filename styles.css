@@ -55,25 +55,42 @@ border-radius: 6px;
 border: 1px solid #ccc;
 background-color: #f5f5f5;
 }
+
 .wanikani-feedback {
 margin-top: 15px;
 font-size: 1.5em;
 text-align: center;
+white-space: pre-line;
+font-family: "Noto Sans JP", "Helvetica Neue", Arial, sans-serif;
+
 }
+
 .wanikani-submit {
 padding: 10px 25px;
 margin: 20px auto;
+font-family: "Noto Sans JP", "Helvetica Neue", Arial, sans-serif;
 display: block;
 font-size: 1.2em;
+font-weight: bold;
 border-radius: 6px;
 border: none;
-background-color: #9c27b0;
+background-color: #ecf6ff; 
 color: white;
 cursor: pointer;
+box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+transition: background-color 0.2s ease, transform 0.1s ease;
 }
+
 .wanikani-submit:hover {
-background-color: #78b6da;
+background-color: #bed0e0;
+transform: translateY(-2px);
 }
+
+.wanikani-submit:active {
+background-color: #829db8;
+transform: translateY(0px);
+}
+  
 .wanikani-remaining-reviews {
 margin-top: 15px;
 font-size: 1.2em;
@@ -92,3 +109,30 @@ position: absolute;
 top: 20px;
 right: 20px;
 }
+
+button.wanikani-disable-today {
+    background-color: #e73c83;
+    color: #fff;
+    font-weight: bold;
+    font-family: "Noto Sans JP", "Helvetica Neue", Arial, sans-serif;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    margin-top: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    position: absolute;
+    bottom: 20px;
+  }
+  
+  button.wanikani-disable-today:hover {
+    background-color: #cf2e6a;
+    transform: translateY(-2px);
+  }
+  
+  button.wanikani-disable-today:active {
+    background-color: #a02050;
+    transform: translateY(0px);
+  }
+  

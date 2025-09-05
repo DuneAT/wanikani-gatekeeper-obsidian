@@ -7,6 +7,10 @@ interface WaniKaniPluginSettings {
   kanjiColor: string;
   vocabularyColor: string;
   minReviews: number;
+  delayAfterCorrect: number;
+  delayAfterIncorrect: number;
+  disableUntil?: string;
+  dailyProgress?: { [date: string]: number };
 }
 
 const DEFAULT_SETTINGS: WaniKaniPluginSettings = {
@@ -15,7 +19,35 @@ const DEFAULT_SETTINGS: WaniKaniPluginSettings = {
   kanjiColor: "#e73c83",
   vocabularyColor: "#7725d4",
   minReviews: 0,
+  delayAfterCorrect: 1000,
+  delayAfterIncorrect: 3000,
+  disableUntil: undefined,
+  dailyProgress: {},
 };
+
+function getTomorrowISOString(): string {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow.toISOString();
+}
+
+function getTodayKey(): string {
+  const today = new Date();
+  return today.toISOString().split("T")[0]; // "YYYY-MM-DD"
+}
+
+function getTodayProgress(settings: WaniKaniPluginSettings): number {
+  const key = getTodayKey();
+  return settings.dailyProgress?.[key] || 0;
+}
+
+function addTodayProgress(settings: WaniKaniPluginSettings, count: number = 1) {
+  const key = getTodayKey();
+  if (!settings.dailyProgress) settings.dailyProgress = {};
+  settings.dailyProgress[key] = (settings.dailyProgress[key] || 0) + count;
+}
+
 
 if (!document.getElementById("confetti-script")) {
   const script = document.createElement("script");
@@ -34,6 +66,11 @@ export default class WaniKaniGatekeeperPlugin extends Plugin {
     this.app.workspace.onLayoutReady(async () => {
       if (!this.settings.apiToken) {
         new Notice("WaniKani API Token not set. Please configure in settings.");
+        return;
+      }
+
+      if (this.settings.disableUntil && new Date() < new Date(this.settings.disableUntil)) {
+        console.log("WaniKani Gatekeeper disabled for today, skipping modal.");
         return;
       }
 
@@ -139,14 +176,16 @@ class WaniKaniModal extends Modal {
   reviews: any[] = [];
   currentIndex: number = 0;
   reviews_dict: {[key: number]: any} = {};
-  allowEmergencyExit: boolean = false;
   currentReviewsClear: number = 0;
+  todayReviewsClear: number = 0;
   emergencyExitHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(app: App, plugin: WaniKaniGatekeeperPlugin) {
     super(app);
     this.plugin = plugin;
+    this.todayReviewsClear = getTodayProgress(this.plugin.settings);
   }
+
   
   renderNextReview() {
     const { contentEl } = this;
@@ -154,8 +193,6 @@ class WaniKaniModal extends Modal {
   
     if (this.currentIndex >= this.reviews.length) {
       new Notice("All WaniKani reviews complete ✅");
-
-
       const confetti = (window as any).confetti;
       if (confetti) {
         confetti({
@@ -163,13 +200,21 @@ class WaniKaniModal extends Modal {
           spread: 70,
           origin: { y: 0.6 }
         });
-      }
-  
-      const closeButton = this.modalEl.querySelector(".modal-close-button") as HTMLElement;
-      if (closeButton) closeButton.style.display = "block";
-  
+      }  
       setTimeout(() => this.close(), 1500);
       return;
+    }
+
+    if (this.todayReviewsClear >= this.plugin.settings.minReviews) {
+      const closeButton = this.modalEl.querySelector(".modal-close-button") as HTMLElement;
+      if (closeButton) closeButton.style.display = "block";
+      const disableBtn = this.contentEl.createEl("button", { text: "Disable for Today", cls: "wanikani-disable-today" });
+      disableBtn.onclick = async () => {
+          this.plugin.settings.disableUntil = getTomorrowISOString();
+          await this.plugin.saveSettings();
+          new Notice("WaniKani Gatekeeper disabled until tomorrow ✅");
+          this.close();
+      };
     }
   
     const rev = this.reviews[this.currentIndex];
@@ -182,14 +227,12 @@ class WaniKaniModal extends Modal {
     else if (rev.object === "kanji") {headerClass += " kanji"; let obj = "kanji";}
     else if (rev.object === "vocabulary") {headerClass += " vocabulary"; let obj = "vocabulary";}
     else if (rev.object === "kana_vocabulary") {headerClass += " radical"; let obj = "kana";};
-
     contentEl.createDiv({ cls: headerClass}, (header) => {
       header.createEl("h2", { text: `${rev.object.toUpperCase()}`, cls: "wanikani-object" });
       header.createEl("div", { text: rev.data.characters || "", cls: "wanikani-character" });
-      header.createEl("div", {text: `Goal: ${this.currentReviewsClear} / ${this.plugin.settings.minReviews}`, cls: "wanikani-remaining-reviews" });
+      header.createEl("div", {text: `Goal: ${this.todayReviewsClear} / ${this.plugin.settings.minReviews}`, cls: "wanikani-remaining-reviews" });
       header.createEl("div", {text: `All: ${this.currentReviewsClear} / ${this.reviews.length}`, cls: "wanikani-done-reviews" });
     });
-    
     let meaningInput: HTMLInputElement | null = null;
     let readingInput: HTMLInputElement | null = null;
 
@@ -217,8 +260,8 @@ class WaniKaniModal extends Modal {
       }
     });
     
-    const feedback = contentEl.createEl("p", { cls: "wanikani-feedback" });
-    const btn = contentEl.createEl("button", {cls: "wanikani-submit", text: "Submit" });
+    const feedback = this.contentEl.createEl("p", { cls: "wanikani-feedback" });
+    const btn = this.contentEl.createEl("button", {cls: "wanikani-submit", text: "Submit" });
     
     const submitOnEnter = (inp: HTMLInputElement | null, btn: HTMLButtonElement) => {
       if (!inp) return;
@@ -258,6 +301,7 @@ class WaniKaniModal extends Modal {
       feedback.setText(isCorrect ? "✅ Correct!" : "❌ Incorrect!");
       feedback.style.color = isCorrect ? "green" : "red";
       if (!isCorrect) {
+        let messages = [`❌ Incorrect!`];
         if (this.reviews_dict[rev.id]) {
           this.reviews_dict[rev.id].incorrect_meaning_answers += meaningCorrect ? 0 : 1;
           this.reviews_dict[rev.id].incorrect_reading_answers += readingCorrect ? 0 : 1;
@@ -273,16 +317,17 @@ class WaniKaniModal extends Modal {
           .filter((r: any) => r.primary)
           .map((r: any) => r.reading)
           .join(", ");
-        feedback.setText(`❌ Incorrect! Correct readings: ${correctReadings}`);
+        messages.push(`Correct readings: ${correctReadings}`);
         }
         if (!meaningCorrect) {
         const correctMeanings = rev.data.meanings
           .map((m: any) => m.meaning)
           .join(", ");
-        feedback.setText(`❌ Incorrect! Correct meanings: ${correctMeanings}`);
+        messages.push(`Correct meanings: ${correctMeanings}`);
         }
+        feedback.setText(messages.join(" \n "));
         this.currentIndex++;
-        setTimeout(() => {this.renderNextReview();}, 3000);
+        setTimeout(() => {this.renderNextReview();}, this.plugin.settings.delayAfterIncorrect);
         return;
       } else {
         let incorrect_meaning_answers = 0;
@@ -295,10 +340,10 @@ class WaniKaniModal extends Modal {
         
         await this.plugin.submitReview(rev.id, incorrect_meaning_answers, incorrect_reading_answers);
         this.currentReviewsClear++;
-        if (this.currentReviewsClear >= this.plugin.settings.minReviews) {
-          this.allowEmergencyExit = true;
-          const closeButton = this.modalEl.querySelector(".modal-close-button") as HTMLElement;
-          //confetti now
+        this.todayReviewsClear++;
+        addTodayProgress(this.plugin.settings, 1);
+        await this.plugin.saveSettings();
+        if (this.currentReviewsClear == this.plugin.settings.minReviews) {
           const confetti = (window as any).confetti;
           confetti({
             particleCount: 200,
@@ -306,11 +351,10 @@ class WaniKaniModal extends Modal {
             origin: { y: 0.6 }
           });
           
-          if (closeButton) closeButton.style.display = "block";
         }
       }  
       this.currentIndex++;
-      setTimeout(() => this.renderNextReview(), 1000);
+      setTimeout(() => this.renderNextReview(), this.plugin.settings.delayAfterCorrect);
     };
     if (rev.data.characters) {
       contentEl.createEl("p", { text: rev.data.characters, cls: "wanikani-character" });
@@ -338,11 +382,9 @@ class WaniKaniModal extends Modal {
     if (closeButton) closeButton.style.display = "none";
 
     this.renderNextReview();
-    this.allowEmergencyExit = false;
 
     this.emergencyExitHandler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "w") {
-        this.allowEmergencyExit = true;
         new Notice("Emergency exit activated");
         this.close();
       }
@@ -350,8 +392,8 @@ class WaniKaniModal extends Modal {
 document.addEventListener("keydown", this.emergencyExitHandler);
   }
   onClose() {
-    if (!this.allowEmergencyExit) {
-      new Notice(`You must complete at least ${this.plugin.settings.minReviews} reviews!`);
+    if (this.todayReviewsClear < this.plugin.settings.minReviews) {
+      new Notice(`You must complete at least ${this.plugin.settings.minReviews} reviews! Remaining: ${this.plugin.settings.minReviews - this.todayReviewsClear}`);
       return;
     }
     this.contentEl.empty();
@@ -428,6 +470,30 @@ class WaniKaniSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.vocabularyColor)
           .onChange(async (value) => {
             this.plugin.settings.vocabularyColor = value.trim() || "#7725d4";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Delay After Correct (ms)")
+      .setDesc("Delay in milliseconds after a correct answer before showing the next review")
+      .addText((text) =>
+        text
+          .setValue(this.plugin.settings.delayAfterCorrect.toString())
+          .onChange(async (value) => {
+            this.plugin.settings.delayAfterCorrect = Number(value) || 1000;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Delay After Incorrect (ms)")
+      .setDesc("Delay in milliseconds after an incorrect answer before showing the next review")
+      .addText((text) =>
+        text
+          .setValue(this.plugin.settings.delayAfterIncorrect.toString())
+          .onChange(async (value) => {
+            this.plugin.settings.delayAfterIncorrect = Number(value) || 3000;
             await this.plugin.saveSettings();
           })
       );
