@@ -11,13 +11,14 @@
 - Fetches your available WaniKani reviews via API.
 - Displays a modal popup to complete reviews before using Obsidian.
 - Color-coded headers for radicals, kanji, and vocabulary.
-- Confetti celebration when all reviews are complete.
+- Confetti celebration when all reviews are complete or goal is reached.
 - Emergency exit option with `Ctrl + Alt + W` or `Esc`.
 - Tracks incorrect answers and submits them back to WaniKani automatically to follow up with SRS system.
 - Fully customizable in settings:
   - API token
   - Min reviews required
   - Header colors for radicals, kanji, and vocabulary
+  - Goal number of today's reviews
 ---
 
 ## Installation
@@ -29,6 +30,7 @@
 
 ## Usage
 
+**0. As the API access is necessary to fetch and submit reviews, a Network access is mandatory for the use of this plugin.**
 1. Set your **WaniKani API token** in the plugin settings.
 2. Configure the **min number of reviews** and **header colors** if desired.
 3. When reviews are available, the gatekeeper popup will appear on opening Obsidian.
