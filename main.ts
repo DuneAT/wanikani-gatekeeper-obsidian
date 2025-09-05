@@ -1,5 +1,6 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
 import * as wanakana from "wanakana";
+import confetti from "canvas-confetti";
 
 interface WaniKaniPluginSettings {
   apiToken: string;
@@ -48,15 +49,6 @@ function addTodayProgress(settings: WaniKaniPluginSettings, count: number = 1) {
   settings.dailyProgress[key] = (settings.dailyProgress[key] || 0) + count;
 }
 
-
-if (!document.getElementById("confetti-script")) {
-  const script = document.createElement("script");
-  script.id = "confetti-script";
-  script.src = "https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js";
-  document.head.appendChild(script);
-}
-
-
 export default class WaniKaniGatekeeperPlugin extends Plugin {
   settings: WaniKaniPluginSettings;
 
@@ -70,7 +62,7 @@ export default class WaniKaniGatekeeperPlugin extends Plugin {
       }
 
       if (this.settings.disableUntil && new Date() < new Date(this.settings.disableUntil)) {
-        console.log("WaniKani Gatekeeper disabled for today, skipping modal.");
+        // console.log("WaniKani Gatekeeper disabled for today, skipping modal.");
         return;
       }
 
@@ -80,7 +72,7 @@ export default class WaniKaniGatekeeperPlugin extends Plugin {
         reviews.forEach((rev) => {
           reviews_dict[rev.id] = [0,0];
         });
-        console.log("Current reviews:", reviews);
+        // console.log("Current reviews:", reviews);
         if (reviews.length != 0) {
           new WaniKaniModal(this.app, this).open();
         }
@@ -151,7 +143,7 @@ export default class WaniKaniGatekeeperPlugin extends Plugin {
     if (!res.ok) {
       console.error("Failed to submit review:", await res.text());
     } else {
-      console.log(`Submitted review for assignment ${subject_id}`);
+      // console.log(`Submitted review for assignment ${subject_id}`);
     }
   }
   async loadSettings() {
@@ -193,14 +185,11 @@ class WaniKaniModal extends Modal {
   
     if (this.currentIndex >= this.reviews.length) {
       new Notice("All WaniKani reviews complete ✅");
-      const confetti = (window as any).confetti;
-      if (confetti) {
-        confetti({
-          particleCount: 200,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      }  
+      confetti({
+        particleCount: 200,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
       setTimeout(() => this.close(), 1500);
       return;
     }
@@ -343,14 +332,12 @@ class WaniKaniModal extends Modal {
         this.todayReviewsClear++;
         addTodayProgress(this.plugin.settings, 1);
         await this.plugin.saveSettings();
-        if (this.currentReviewsClear == this.plugin.settings.minReviews) {
-          const confetti = (window as any).confetti;
+        if (this.todayReviewsClear == this.plugin.settings.minReviews) {
           confetti({
             particleCount: 200,
             spread: 70,
             origin: { y: 0.6 }
           });
-          
         }
       }  
       this.currentIndex++;
@@ -375,7 +362,7 @@ class WaniKaniModal extends Modal {
     (this.modalEl.parentElement as HTMLElement).style.pointerEvents = "none";
     this.modalEl.style.pointerEvents = "auto"; 
     this.reviews = await this.plugin.getReviews();
-    console.log("Fetched reviews:", this.reviews);
+    // console.log("Fetched reviews:", this.reviews);
     this.currentIndex = 0;
   
     const closeButton = modalEl.querySelector(".modal-close-button") as HTMLElement;
