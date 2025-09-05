@@ -1,11 +1,12 @@
 # WaniKani Gatekeeper Plugin for Obsidian
-**WaniKani Gatekeeper** is an Obsidian plugin that ensures you complete your WaniKani reviews before accessing your notes. This plugin helps you stay consistent with your Japanese learning while using Obsidian.  
 
 **Are you tired of procratinating your Wanikani reviews ? Now you can't escape ! Whenever you open your Obsidian vault, that plugin will fetch the remaining reviews from Wanikani and ask you to complete them before accessing to your vault.** 
 
 ---
 
 ## Features
+
+**WaniKani Gatekeeper** is an Obsidian plugin that ensures you complete your WaniKani reviews before accessing your notes. This plugin helps you stay consistent with your Japanese learning while using Obsidian.  
 
 - Fetches your available WaniKani reviews via API.
 - Displays a modal popup to complete reviews before using Obsidian.
