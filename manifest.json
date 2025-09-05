@@ -1,6 +1,6 @@
 {
 	"id": "wanikani-gatekeeper",
-	"name": "Wanikani gatekeeper",
+	"name": "Wanikani Gatekeeper",
 	"version": "1.0.0",
 	"minAppVersion": "1.0.0",
 	"description": "Block access to your vault until you check Wanikani reviews.",
