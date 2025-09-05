@@ -12,7 +12,7 @@
 - Displays a modal popup to complete reviews before using Obsidian.
 - Color-coded headers for radicals, kanji, and vocabulary.
 - Confetti celebration when all reviews are complete.
-- Emergency exit option with `Ctrl + Alt + W` (Esc works as much).
+- Emergency exit option with `Ctrl + Alt + W` or `Esc`.
 - Tracks incorrect answers and submits them back to WaniKani automatically to follow up with SRS system.
 - Fully customizable in settings:
   - API token
