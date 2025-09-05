@@ -6,3 +6,71 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+.wanikani-header {
+background-color: #000000; 
+padding: 20px;
+text-align: center;
+}
+
+.wanikani-object {
+font-size: 1.5em;
+font-weight: bold;
+color: white;
+margin-bottom: 10px;
+}
+
+.wanikani-header.radical {
+background-color: #1173cf;
+}
+.wanikani-header.kanji {
+background-color: #e73c83;
+}
+
+.wanikani-header.vocabulary {
+background-color: #7725d4;
+}
+.wanikani-character {
+font-size: 6em;
+font-weight: bold;
+color: white;
+}
+.wanikani-section {
+margin: 20px auto;
+text-align: center;
+}
+.wanikani-section h3 {
+font-size: 1.2em;
+font-weight: bold;
+margin-bottom: 10px;
+}
+.wanikani-input {
+font-size: 2em;
+padding: 10px;
+width: 60%;
+margin: 10px auto;
+display: block;
+text-align: center;
+border-radius: 6px;
+border: 1px solid #ccc;
+background-color: #f5f5f5;
+}
+.wanikani-feedback {
+margin-top: 15px;
+font-size: 1.5em;
+text-align: center;
+}
+.wanikani-submit {
+padding: 10px 25px;
+margin: 20px auto;
+display: block;
+font-size: 1.2em;
+border-radius: 6px;
+border: none;
+background-color: #9c27b0;
+color: white;
+cursor: pointer;
+}
+.wanikani-submit:hover {
+background-color: #78b6da;
+}
