@@ -6,7 +6,7 @@ interface WaniKaniPluginSettings {
   radicalColor: string;
   kanjiColor: string;
   vocabularyColor: string;
-  maxReviews: number;
+  minReviews: number;
 }
 
 const DEFAULT_SETTINGS: WaniKaniPluginSettings = {
@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS: WaniKaniPluginSettings = {
   radicalColor: "#1173cf",
   kanjiColor: "#e73c83",
   vocabularyColor: "#7725d4",
-  maxReviews: 10,
+  minReviews: 0,
 };
 
 if (!document.getElementById("confetti-script")) {
@@ -140,6 +140,7 @@ class WaniKaniModal extends Modal {
   currentIndex: number = 0;
   reviews_dict: {[key: number]: any} = {};
   allowEmergencyExit: boolean = false;
+  currentReviewsClear: number = 0;
   emergencyExitHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(app: App, plugin: WaniKaniGatekeeperPlugin) {
@@ -185,6 +186,8 @@ class WaniKaniModal extends Modal {
     contentEl.createDiv({ cls: headerClass}, (header) => {
       header.createEl("h2", { text: `${rev.object.toUpperCase()}`, cls: "wanikani-object" });
       header.createEl("div", { text: rev.data.characters || "", cls: "wanikani-character" });
+      header.createEl("div", {text: `Goal: ${this.currentReviewsClear} / ${this.plugin.settings.minReviews}`, cls: "wanikani-remaining-reviews" });
+      header.createEl("div", {text: `All: ${this.currentReviewsClear} / ${this.reviews.length}`, cls: "wanikani-done-reviews" });
     });
     
     let meaningInput: HTMLInputElement | null = null;
@@ -210,10 +213,7 @@ class WaniKaniModal extends Modal {
           cls: "wanikani-input"
         }) as HTMLInputElement;
         if (!needsMeaning) setTimeout(() => readingInput?.focus(), 0);
-        readingInput.addEventListener("input", (e) => {
-          const input = e.target as HTMLInputElement;
-          input.value = wanakana.toHiragana(input.value);
-        });
+        wanakana.bind(readingInput, { IMEMode: true });
       }
     });
     
@@ -294,6 +294,20 @@ class WaniKaniModal extends Modal {
         }
         
         await this.plugin.submitReview(rev.id, incorrect_meaning_answers, incorrect_reading_answers);
+        this.currentReviewsClear++;
+        if (this.currentReviewsClear >= this.plugin.settings.minReviews) {
+          this.allowEmergencyExit = true;
+          const closeButton = this.modalEl.querySelector(".modal-close-button") as HTMLElement;
+          //confetti now
+          const confetti = (window as any).confetti;
+          confetti({
+            particleCount: 200,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+          
+          if (closeButton) closeButton.style.display = "block";
+        }
       }  
       this.currentIndex++;
       setTimeout(() => this.renderNextReview(), 1000);
@@ -337,7 +351,7 @@ document.addEventListener("keydown", this.emergencyExitHandler);
   }
   onClose() {
     if (!this.allowEmergencyExit) {
-      new Notice(`You must complete at least ${this.plugin.settings.maxReviews} reviews!`);
+      new Notice(`You must complete at least ${this.plugin.settings.minReviews} reviews!`);
       return;
     }
     this.contentEl.empty();
@@ -359,13 +373,13 @@ class WaniKaniSettingTab extends PluginSettingTab {
     containerEl.createEl("h2", { text: "WaniKani Gatekeeper Settings" });
 
     new Setting(containerEl)
-      .setName("Max Reviews")
+      .setName("Min Reviews")
       .setDesc("Limit the number of reviews necessary to display gatekeeper exit")
       .addText((text) =>
         text
-          .setValue(this.plugin.settings.maxReviews.toString())
+          .setValue(this.plugin.settings.minReviews.toString())
           .onChange(async (value) => {
-            this.plugin.settings.maxReviews = Number(value) || 10;
+            this.plugin.settings.minReviews = Number(value) || 10;
             await this.plugin.saveSettings();
           })
       );

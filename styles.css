@@ -74,3 +74,21 @@ cursor: pointer;
 .wanikani-submit:hover {
 background-color: #78b6da;
 }
+.wanikani-remaining-reviews {
+margin-top: 15px;
+font-size: 1.2em;
+text-align: left;
+color: #ffffff;
+position: absolute;
+top: 20px;
+left: 20px;
+}
+.wanikani-done-reviews {
+margin-top: 15px;
+font-size: 1.2em;
+text-align: right;
+color: #ffffff;
+position: absolute;
+top: 20px;
+right: 20px;
+}
