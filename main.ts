@@ -194,9 +194,19 @@ class WaniKaniModal extends Modal {
       return;
     }
 
+    const closeButton = this.modalEl.querySelector(".modal-close-button") as HTMLElement;
+    if (closeButton) {
+      closeButton.classList.add("wanikani-hidden");
+      closeButton.classList.remove("wanikani-visible");
+    }
+    
     if (this.todayReviewsClear >= this.plugin.settings.minReviews) {
       const closeButton = this.modalEl.querySelector(".modal-close-button") as HTMLElement;
-      if (closeButton) closeButton.style.display = "block";
+      if (closeButton) {
+        closeButton.classList.remove("wanikani-hidden");
+        closeButton.classList.add("wanikani-visible");
+      }
+    
       const disableBtn = this.contentEl.createEl("button", { text: "Disable for Today", cls: "wanikani-disable-today" });
       disableBtn.onclick = async () => {
           this.plugin.settings.disableUntil = getTomorrowISOString();
@@ -205,6 +215,7 @@ class WaniKaniModal extends Modal {
           this.close();
       };
     }
+    
   
     const rev = this.reviews[this.currentIndex];
   
@@ -288,7 +299,6 @@ class WaniKaniModal extends Modal {
       const isCorrect = meaningCorrect && readingCorrect;
   
       feedback.setText(isCorrect ? "✅ Correct!" : "❌ Incorrect!");
-      feedback.style.color = isCorrect ? "green" : "red";
       if (!isCorrect) {
         let messages = [`❌ Incorrect!`];
         if (this.reviews_dict[rev.id]) {
@@ -359,14 +369,18 @@ class WaniKaniModal extends Modal {
       }
     }, true);
 
-    (this.modalEl.parentElement as HTMLElement).style.pointerEvents = "none";
-    this.modalEl.style.pointerEvents = "auto"; 
+    (this.modalEl.parentElement as HTMLElement).classList.add("wanikani-pointer-none");
+    this.modalEl.classList.add("wanikani-pointer-auto");
+
     this.reviews = await this.plugin.getReviews();
     // console.log("Fetched reviews:", this.reviews);
     this.currentIndex = 0;
   
     const closeButton = modalEl.querySelector(".modal-close-button") as HTMLElement;
-    if (closeButton) closeButton.style.display = "none";
+    if (closeButton) {
+      closeButton.classList.remove("wanikani-hidden");
+      closeButton.classList.add("wanikani-visible");
+    }
 
     this.renderNextReview();
 
