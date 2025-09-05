@@ -67,6 +67,6 @@ Obsidian license (0BSD).
 
 ## Notes
 
-- Uses [WaniKani API v2](https://docs.wanikani.com/) to fetch reviews.
+- Uses [WaniKani API v2](https://docs.api.wanikani.com/) to fetch reviews.
 - Converts readings automatically to **hiragana** using [wanakana](https://github.com/WaniKani/WanaKana).  
 - Confetti effect powered by [canvas-confetti](https://www.npmjs.com/package/canvas-confetti).  
