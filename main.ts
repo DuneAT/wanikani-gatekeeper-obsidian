@@ -369,9 +369,6 @@ class WaniKaniModal extends Modal {
       }
       setTimeout(() => this.renderNextReview(), this.plugin.settings.delayAfterCorrect);
     };
-    if (rev.data.characters) {
-      contentEl.createEl("p", { text: rev.data.characters, cls: "wanikani-character" });
-    }
   }
 
   async onOpen() {
@@ -395,7 +392,7 @@ class WaniKaniModal extends Modal {
       this.close();
       return;
     }
-    
+
     this.currentIndex = Math.floor(Math.random() * this.reviews.length);
     this.currentReviewsClear = 0;
   
