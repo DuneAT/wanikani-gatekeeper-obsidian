@@ -1,6 +1,8 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
 import * as wanakana from "wanakana";
 import confetti from "canvas-confetti";
+import { requestUrl } from "obsidian";
+
 
 interface WaniKaniPluginSettings {
   apiToken: string;
@@ -90,33 +92,35 @@ export default class WaniKaniGatekeeperPlugin extends Plugin {
 
 
   async getReviews(): Promise<any[]> {
-    const summaryRes = await fetch("https://api.wanikani.com/v2/summary", {
+    const summaryRes = await requestUrl({
+      url: "https://api.wanikani.com/v2/summary",
       headers: {
         "Wanikani-Revision": "20170710",
         Authorization: `Bearer ${this.settings.apiToken}`,
       },
     });
-  
-    if (!summaryRes.ok) throw new Error(`Failed to fetch summary: ${summaryRes.status}`);
-  
-    const summaryData = await summaryRes.json();
+    
+    if (summaryRes.status !== 200) {
+      throw new Error(`Failed to fetch summary: ${summaryRes.status}`);
+    }
+    
+    const summaryData = summaryRes.json;
     const availableReviews = summaryData.data.reviews[0].subject_ids;
+    
   
     if (availableReviews.length === 0) return [];
   
-    const subjectsRes = await fetch(
-      `https://api.wanikani.com/v2/subjects?ids=${availableReviews.join(",")}`,
-      {
+    const subjectsRes = await requestUrl({
+      url: `https://api.wanikani.com/v2/subjects?ids=${availableReviews.join(",")}`,
         headers: {
           "Wanikani-Revision": "20170710",
           Authorization: `Bearer ${this.settings.apiToken}`,
         },
-      }
-    );
+      });
   
-    if (!subjectsRes.ok) throw new Error(`Failed to fetch subjects: ${subjectsRes.status}`);
+    if (subjectsRes.status != 200) throw new Error(`Failed to fetch subjects: ${subjectsRes.status}`);
   
-    const subjectsData = await subjectsRes.json();
+    const subjectsData = await subjectsRes.json;
     return subjectsData.data;
   }
 
@@ -130,7 +134,8 @@ export default class WaniKaniGatekeeperPlugin extends Plugin {
     };
     
   
-    const res = await fetch("https://api.wanikani.com/v2/reviews", {
+    const res = await requestUrl({
+      url: "https://api.wanikani.com/v2/reviews",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -140,8 +145,8 @@ export default class WaniKaniGatekeeperPlugin extends Plugin {
       body: JSON.stringify(payload),
     });
   
-    if (!res.ok) {
-      console.error("Failed to submit review:", await res.text());
+    if (res.status !== 201) {
+      console.error("Failed to submit review:", res.text);
     } else {
       // console.log(`Submitted review for assignment ${subject_id}`);
     }
@@ -183,7 +188,7 @@ class WaniKaniModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
   
-    if (this.currentIndex >= this.reviews.length) {
+    if (this.reviews.length === 0) {
       new Notice("All WaniKani reviews complete ✅");
       confetti({
         particleCount: 200,
@@ -199,7 +204,7 @@ class WaniKaniModal extends Modal {
       closeButton.classList.add("wanikani-hidden");
       closeButton.classList.remove("wanikani-visible");
     }
-    
+
     if (this.todayReviewsClear >= this.plugin.settings.minReviews) {
       const closeButton = this.modalEl.querySelector(".modal-close-button") as HTMLElement;
       if (closeButton) {
@@ -325,7 +330,12 @@ class WaniKaniModal extends Modal {
         messages.push(`Correct meanings: ${correctMeanings}`);
         }
         feedback.setText(messages.join(" \n "));
-        this.currentIndex++;
+
+        if (this.reviews.length > 0) {
+          this.currentIndex = Math.floor(Math.random() * this.reviews.length);
+        } else {
+          this.currentIndex = 0;
+        }
         setTimeout(() => {this.renderNextReview();}, this.plugin.settings.delayAfterIncorrect);
         return;
       } else {
@@ -340,6 +350,7 @@ class WaniKaniModal extends Modal {
         await this.plugin.submitReview(rev.id, incorrect_meaning_answers, incorrect_reading_answers);
         this.currentReviewsClear++;
         this.todayReviewsClear++;
+        this.reviews.splice(this.currentIndex, 1);
         addTodayProgress(this.plugin.settings, 1);
         await this.plugin.saveSettings();
         if (this.todayReviewsClear == this.plugin.settings.minReviews) {
@@ -349,8 +360,13 @@ class WaniKaniModal extends Modal {
             origin: { y: 0.6 }
           });
         }
-      }  
-      this.currentIndex++;
+      }
+
+      if (this.reviews.length > 0) {
+        this.currentIndex = Math.floor(Math.random() * this.reviews.length);
+      } else {
+        this.currentIndex = 0;
+      }
       setTimeout(() => this.renderNextReview(), this.plugin.settings.delayAfterCorrect);
     };
     if (rev.data.characters) {
@@ -374,7 +390,14 @@ class WaniKaniModal extends Modal {
 
     this.reviews = await this.plugin.getReviews();
     // console.log("Fetched reviews:", this.reviews);
-    this.currentIndex = 0;
+    if (this.reviews.length === 0) {
+      new Notice("No WaniKani reviews available.");
+      this.close();
+      return;
+    }
+    
+    this.currentIndex = Math.floor(Math.random() * this.reviews.length);
+    this.currentReviewsClear = 0;
   
     const closeButton = modalEl.querySelector(".modal-close-button") as HTMLElement;
     if (closeButton) {
@@ -499,11 +522,39 @@ class WaniKaniSettingTab extends PluginSettingTab {
           })
       );
 
+      new Setting(containerEl)
+        .setName("Disable Until")
+        .setDesc("Currently prevents the popup until this date (if set).")
+        .addButton((btn) => {
+          btn.setButtonText("Reset Disable")
+            .setCta()
+            .onClick(async () => {
+              this.plugin.settings.disableUntil = undefined;
+              await this.plugin.saveSettings();
+              new Notice("Gatekeeper re-enabled ✅");
+              this.display();
+            });
+        })
+        .addExtraButton((btn) => {
+          if (this.plugin.settings.disableUntil) {
+            btn.setTooltip("View current disable date")
+              .setIcon("calendar")
+              .onClick(() => {
+                new Notice(`Disabled until: ${this.plugin.settings.disableUntil}`);
+              });
+          }
+          else {
+            btn.setTooltip("Not currently disabled")
+              .setIcon("calendar-check");
+          }
+        });
+
+
     containerEl.createEl("hr");
     containerEl.createEl("h3", { text: "Usage Instructions" });
     containerEl.createEl("p", { text: "1. Set your WaniKani API token above." });
     containerEl.createEl("p", { text: "2. When you have reviews available, the gatekeeper popup will appear." });
     containerEl.createEl("p", { text: "3. Complete at least the specified number of reviews to close the popup." });
-    containerEl.createEl("p", { text: "4. If you need to access your vault urgently, press Ctrl+Alt+W or Esc to close the modal." });
+    containerEl.createEl("p", { text: "4. If you need to access your vault urgently, press Ctrl+Alt+W or Esc to close the popup." });
   }
 }
